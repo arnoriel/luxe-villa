@@ -4,6 +4,7 @@ import { properties } from '../data';
 import { PropertyCard } from '../components/PropertyCard';
 import { Search, Shield, Star, Headphones } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Chatbot } from '../components/Chatbot';
 
 export const Home = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -150,6 +151,7 @@ export const Home = () => {
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
         </div>
       </section>
+      <Chatbot />
     </div>
   );
 };
