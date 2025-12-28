@@ -1,4 +1,3 @@
-// src/components/Chatbot.tsx
 import React, { useState, useRef, useEffect, memo } from "react";
 import {
   MessageSquare,
@@ -7,14 +6,20 @@ import {
   Minimize2,
   Maximize2,
   ExternalLink,
+  RotateCcw, // Tambahkan ikon Refresh
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { getSmartResponse, type ChatMessage } from "../utils/ailogic";
 import { properties } from "../data";
 
-// --- PINDAHKAN KE LUAR AGAR TIDAK RE-CREATED SAAT RENDER ---
-// Gunakan memo agar kartu tidak re-render kecuali ID-nya berubah
+const STORAGE_KEY = "luxe_chat_history";
+
+const INITIAL_MESSAGE: ChatMessage = {
+  role: "assistant",
+  content: "Halo! Selamat datang di LuxeEstate. Ada properti impian yang sedang Anda cari?",
+};
+
 const MiniPropertyCard = memo(({ id }: { id: number }) => {
   const property = properties.find((p) => p.id === id);
   if (!property) return null;
@@ -26,22 +31,12 @@ const MiniPropertyCard = memo(({ id }: { id: number }) => {
       transition={{ duration: 0.3 }}
       className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200 shadow-sm flex flex-col w-full"
     >
-      <img
-        src={property.image}
-        alt={property.title}
-        className="w-full h-28 object-cover"
-      />
+      <img src={property.image} alt={property.title} className="w-full h-28 object-cover" />
       <div className="p-3">
-        <h4 className="font-bold text-xs text-slate-900 truncate">
-          {property.title}
-        </h4>
-        <p className="text-[11px] text-blue-600 font-bold mb-3">
-          {property.price}
-        </p>
+        <h4 className="font-bold text-xs text-slate-900 truncate">{property.title}</h4>
+        <p className="text-[11px] text-blue-600 font-bold mb-3">{property.price}</p>
         <Link
           to={`/property/${property.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
           className="flex items-center justify-center gap-2 w-full py-2 bg-blue-600 text-white text-[10px] font-bold rounded-lg hover:bg-blue-700 transition active:scale-95"
         >
           Lihat Detail <ExternalLink className="w-3 h-3" />
@@ -51,28 +46,36 @@ const MiniPropertyCard = memo(({ id }: { id: number }) => {
   );
 });
 
-// Beri nama untuk debugging
 MiniPropertyCard.displayName = "MiniPropertyCard";
 
 export const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content:
-        "Halo! Selamat datang di LuxeEstate. Ada properti impian yang sedang Anda cari?",
-    },
-  ]);
+  
+  // 1. Load data dari localStorage saat inisialisasi
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [INITIAL_MESSAGE];
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // 2. Simpan ke localStorage setiap kali ada pesan baru
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isOpen, isMinimized]);
+
+  // 3. Fungsi untuk Reset Chat
+  const handleResetChat = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMessages([INITIAL_MESSAGE]);
+    localStorage.removeItem(STORAGE_KEY);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,10 +84,11 @@ export const Chatbot = () => {
     const userMsg = input;
     setInput("");
 
-    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
+    const newMessages = [...messages, { role: "user", content: userMsg } as ChatMessage];
+    setMessages(newMessages);
     setIsLoading(true);
 
-    const result = await getSmartResponse(userMsg, messages);
+    const result = await getSmartResponse(userMsg, newMessages);
 
     setMessages((prev) => [
       ...prev,
@@ -136,6 +140,15 @@ export const Chatbot = () => {
                 <h3 className="font-bold text-sm">Luxe Assistant</h3>
               </div>
               <div className="flex items-center gap-2">
+                {/* TOMBOL REFRESH/RESET */}
+                <button
+                  onClick={handleResetChat}
+                  title="Reset Percakapan"
+                  className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+                >
+                  <RotateCcw className="w-4 h-4 text-gray-300" />
+                </button>
+
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -143,11 +156,7 @@ export const Chatbot = () => {
                   }}
                   className="hidden md:block p-1 hover:bg-white/10 rounded"
                 >
-                  {isMinimized ? (
-                    <Maximize2 className="w-4 h-4" />
-                  ) : (
-                    <Minimize2 className="w-4 h-4" />
-                  )}
+                  {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
                 </button>
                 <button
                   onClick={(e) => {
@@ -164,16 +173,11 @@ export const Chatbot = () => {
 
             {!isMinimized && (
               <>
-                <div
-                  ref={scrollRef}
-                  className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-100/50 scroll-smooth"
-                >
+                <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-100/50 scroll-smooth">
                   {messages.map((msg, idx) => (
                     <div
                       key={`msg-${idx}`}
-                      className={`flex ${
-                        msg.role === "user" ? "justify-end" : "justify-start"
-                      }`}
+                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                       <div
                         className={`max-w-[85%] p-3 rounded-2xl text-[13px] leading-relaxed shadow-sm ${
@@ -183,14 +187,10 @@ export const Chatbot = () => {
                         }`}
                       >
                         {msg.content}
-
                         {msg.propertyIds && msg.propertyIds.length > 0 && (
                           <div className="flex flex-col gap-3 mt-4">
                             {msg.propertyIds.map((id) => (
-                              <MiniPropertyCard
-                                key={`prop-${idx}-${id}`}
-                                id={id}
-                              />
+                              <MiniPropertyCard key={`prop-${idx}-${id}`} id={id} />
                             ))}
                           </div>
                         )}
@@ -207,10 +207,7 @@ export const Chatbot = () => {
                   )}
                 </div>
 
-                <form
-                  onSubmit={handleSubmit}
-                  className="p-3 bg-white border-t border-gray-100 flex gap-2"
-                >
+                <form onSubmit={handleSubmit} className="p-3 bg-white border-t border-gray-100 flex gap-2">
                   <input
                     type="text"
                     value={input}
