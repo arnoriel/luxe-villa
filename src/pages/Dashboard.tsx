@@ -130,7 +130,7 @@ export const Dashboard = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 outline-none transition-all font-medium"
-                placeholder="admin_luxe"
+                placeholder="username"
               />
             </div>
             <div>
@@ -140,7 +140,7 @@ export const Dashboard = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 outline-none transition-all font-medium"
-                placeholder="••••••••"
+                placeholder="password"
               />
             </div>
             
