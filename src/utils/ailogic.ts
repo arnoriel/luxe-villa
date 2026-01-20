@@ -1,4 +1,3 @@
-// src/utils/ailogic.ts
 import Groq from "groq-sdk";
 import { properties } from "../data";
 
@@ -13,7 +12,6 @@ export interface ChatMessage {
   propertyIds?: number[];
 }
 
-// Fitur Hemat: Jawaban instan untuk sapaan umum tanpa panggil AI
 const quickResponses: Record<string, string> = {
   "halo": "Halo! Selamat datang di LuxeEstate. Ada properti yang bisa saya bantu carikan?",
   "hi": "Hi! Ada yang bisa saya bantu hari ini?",
@@ -22,29 +20,27 @@ const quickResponses: Record<string, string> = {
 };
 
 export async function getSmartResponse(prompt: string, history: ChatMessage[]) {
-  // --- OPTIMASI 1: Client-side Filter (Hemat API) ---
   const lowPrompt = prompt.toLowerCase().trim();
   if (quickResponses[lowPrompt]) {
-    return { text: quickResponses[lowPrompt], propertyIds: [] };
+    return { text: quickResponses[lowPrompt], propertyIds: [], intent: "chat" };
   }
 
   try {
-    // --- OPTIMASI 2: Minimalisir Context (Hemat Token) ---
-    // Hanya ambil data yang benar-benar penting untuk AI
     const propertyContext = properties.map((p) => ({
       id: p.id,
-      t: p.title, // Singkatkan nama field
+      t: p.title,
       p: p.price,
       l: p.location,
     }));
 
     const systemPrompt = `Role: LuxeEstate Assistant. 
-    Format JSON: {"text": "msg", "ids": [number]}. 
+    Format JSON: {"text": "msg", "ids": [number], "intent": "buy" | "chat"}. 
     Data: ${JSON.stringify(propertyContext)}. 
-    Aturan: Ramah, Bahasa Indonesia, berikan ID jika sebut properti.`;
+    Aturan: 
+    1. Jika user ingin membeli/menyewa/tertarik pada properti tertentu, set "intent": "buy" dan berikan ID properti tersebut di "ids".
+    2. Selain itu gunakan "intent": "chat".
+    3. Ramah, Bahasa Indonesia.`;
 
-    // --- OPTIMASI 3: Batasi History (Hemat Token & Kuota) ---
-    // Cukup ambil 2 atau 3 chat terakhir agar payload tidak membengkak
     const minimalHistory = history.slice(-3).map((chat) => ({
       role: chat.role === "user" ? "user" : "assistant",
       content: chat.content,
@@ -56,12 +52,11 @@ export async function getSmartResponse(prompt: string, history: ChatMessage[]) {
       { role: "user", content: prompt },
     ];
 
-    // --- OPTIMASI 4: Parameter API yang Lebih Efisien ---
     const chatCompletion = await groq.chat.completions.create({
       messages: messages as any,
       model: "llama-3.1-8b-instant",
       temperature: 0.5,
-      max_tokens: 500, // Batasi jawaban agar tidak terlalu panjang
+      max_tokens: 500,
       top_p: 1,
       response_format: { type: "json_object" }
     });
@@ -71,20 +66,15 @@ export async function getSmartResponse(prompt: string, history: ChatMessage[]) {
 
     return {
       text: parsed.text || "Ada lagi yang bisa saya bantu?",
-      propertyIds: parsed.ids || []
+      propertyIds: parsed.ids || [],
+      intent: parsed.intent || "chat"
     };
 
   } catch (error: any) {
     console.error("Groq Error:", error);
-    
-    // Jika kena limit 429, berikan pesan yang lebih informatif
     if (error?.status === 429) {
-      return { 
-        text: "Maaf, server AI kami sedang sangat sibuk karena banyak permintaan. Mohon tunggu sebentar ya.", 
-        propertyIds: [] 
-      };
+      return { text: "Maaf, server kami sedang sibuk.", propertyIds: [], intent: "chat" };
     }
-    
-    return { text: "Maaf, terjadi sedikit gangguan teknis.", propertyIds: [] };
+    return { text: "Maaf, terjadi gangguan teknis.", propertyIds: [], intent: "chat" };
   }
 }
