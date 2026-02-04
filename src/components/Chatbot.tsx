@@ -172,13 +172,36 @@ export const Chatbot = () => {
   return (
     <>
       {!isOpen && (
-        <motion.button
-          initial={{ scale: 0 }} animate={{ scale: 1 }}
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 bg-blue-600 text-white p-4 rounded-full shadow-2xl"
-        >
-          <MessageSquare className="w-6 h-6" />
-        </motion.button>
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
+          {/* Tooltip Label */}
+         {/* Tooltip Label */}
+          <motion.div
+            initial={{ opacity: 0, x: 20, scale: 0.8 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            transition={{ delay: 0.5 }}
+            className="bg-white px-4 py-2 rounded-xl shadow-xl border border-gray-100 flex items-center relative"
+          >
+            <p className="text-[11px] md:text-sm font-bold text-slate-700 whitespace-nowrap">
+              Butuh Bantuan? Tanyakan disini
+            </p>
+            {/* Segitiga Tooltip */}
+            <div className="absolute right-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 bg-white rotate-45 border-r border-t border-gray-100"></div>
+          </motion.div>
+
+          {/* Chat Button */}
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setIsOpen(true)}
+            className="bg-blue-600 text-white p-4 rounded-full shadow-2xl relative"
+          >
+            <MessageSquare className="w-6 h-6" />
+            {/* Notif Dot */}
+            <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
+          </motion.button>
+        </div>
       )}
 
       <AnimatePresence>
